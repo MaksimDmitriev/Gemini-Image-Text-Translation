@@ -40,7 +40,17 @@ RECHECK_PROMPT = (
 
 def normalized_box(box, width, height):
     """Convert Gemini's [y1, x1, y2, x2] coordinates to a PIL rectangle."""
-    y1, x1, y2, x2 = (max(0, min(1000, int(value))) for value in box)
+    def numbers(value):
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                yield from numbers(item)
+        else:
+            yield value
+
+    values = list(numbers(box))
+    if len(values) != 4:
+        raise ValueError(f"invalid Gemini bounding box: {box!r}")
+    y1, x1, y2, x2 = (max(0, min(1000, int(value))) for value in values)
     return (
         round(x1 * width / 1000),
         round(y1 * height / 1000),
