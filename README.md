@@ -46,6 +46,7 @@ model can be changed with `--model`.
   rather than from JPEG compression itself.
 - Gemini returns normalized bounding boxes for the original text and its safe writing
   area. The script converts them to pixels, estimates the local paper colour, erases
-  the source, and chooses the largest font that fits.
+  the source, and chooses the largest font that fits. Horizontal and 90-degree rotated
+  labels keep their original orientation.
 - Standalone numbers and existing Latin text are intentionally left unchanged.
 - Very dense or low-resolution drawings may need a second pass or prompt tuning.
