@@ -23,15 +23,11 @@ Return ONLY a JSON array. Each object must have exactly these fields:
   "translation": its English translation,
   "box_2d": tight bounds of the original text [ymin, xmin, ymax, xmax],
   "target_box_2d": the largest safe rectangular area in the same table cell or label
-                   area where the translation may be written without crossing lines,
-  "rotation_degrees": clockwise rotation needed to match the source text orientation;
-                      use exactly one of 0, 90, 180, or 270.
+                   area where the translation may be written without crossing lines.
 
 All coordinates must be integers normalized to 0..1000. Include all Cyrillic text,
 including small labels, notes, title blocks, and rotated text. If text is rotated,
-still use its axis-aligned bounds and preserve its rotation. Each target box must stay
-inside the source text's own table cell and must never include neighboring cells.
-Preserve numbers that occur inside translated text.
+still use its axis-aligned bounds. Preserve numbers that occur inside translated text.
 """
 
 FALLBACK_MODEL = "gemini-3.5-flash-lite"
