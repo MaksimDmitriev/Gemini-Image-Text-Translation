@@ -3,8 +3,9 @@
 A small Python script that finds Russian text in a technical drawing, translates it
 to English with Gemini, removes the Russian text, and fits the translation into the
 same table cell or label area. It uses a second Gemini pass to catch small Cyrillic
-text missed on the first pass, so a successful run normally uses two API calls per
-image.
+text missed on the first pass, so a successful full run normally uses two API calls
+per image. The first-pass output is saved immediately; if the cleanup pass receives
+a temporary `503`, the usable first-pass image is kept.
 
 ## Setup
 
@@ -28,18 +29,20 @@ Load it into the current terminal:
 source ~/.zshrc
 ```
 
-Put the drawings at `input/1.jpg`, `input/2.jpg`, and `input/3.jpg`, then run:
+Put the drawings at `input/1.jpg`, `input/2.jpg`, and `input/3.jpg`, then process the
+whole folder sequentially:
 
 ```bash
-python translate_drawing.py input/1.jpg output/1_en.png
-python translate_drawing.py input/2.jpg output/2_en.png
-python translate_drawing.py input/3.jpg output/3_en.png
+python translate_drawing.py input output
 ```
 
+The results are saved as `output/1_en.png`, `output/2_en.png`, and
+`output/3_en.png`. PNG, JPEG, and WebP inputs are supported. A single image can still
+be processed with `python translate_drawing.py input/1.jpg output/1_en.png`.
+
 The default model is `gemini-3.6-flash`. If it returns a temporary `503` capacity
-error, the script automatically retries with `gemini-3.5-flash-lite`. The primary
-model can be changed with `--model`. A fallback adds one API call for the affected
-pass.
+error, the script automatically retries with `gemini-3.5-flash`. The primary model
+can be changed with `--model`. A fallback adds one API call for the affected pass.
 
 ## Notes
 

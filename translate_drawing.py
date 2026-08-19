@@ -31,7 +31,8 @@ including small labels, notes, title blocks, and rotated text. If text is rotate
 still use its axis-aligned bounds. Preserve numbers that occur inside translated text.
 """
 
-FALLBACK_MODEL = "gemini-3.5-flash-lite"
+FALLBACK_MODEL = "gemini-3.5-flash"
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 RECHECK_PROMPT = (
     "This drawing has already been partially translated. Find and translate only "
     "Cyrillic text that still remains; ignore all English replacements.\n\n" + PROMPT
@@ -187,15 +188,23 @@ def translate_image(input_path, output_path, model):
         client, Path(input_path).read_bytes(), mime_type, model, PROMPT
     )
     apply_regions(image, regions)
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    image.save(output_path)
+    print(f"First pass saved {len(regions)} text regions -> {output_path}")
 
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
-    remaining_regions = request_regions(
-        client, buffer.getvalue(), "image/png", model, RECHECK_PROMPT
-    )
+    try:
+        remaining_regions = request_regions(
+            client, buffer.getvalue(), "image/png", model, RECHECK_PROMPT
+        )
+    except errors.ServerError as error:
+        if error.code != 503:
+            raise
+        print("Second pass unavailable; keeping the first-pass output")
+        return
     apply_regions(image, remaining_regions)
 
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path)
     print(
         f"Translated {len(regions) + len(remaining_regions)} text regions "
@@ -205,18 +214,34 @@ def translate_image(input_path, output_path, model):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", help="Russian drawing (PNG/JPEG/WebP)")
-    parser.add_argument("output", nargs="?", help="Output image path")
+    parser.add_argument("input", help="Russian drawing or folder of drawings")
+    parser.add_argument("output", nargs="?", help="Output image or folder")
     parser.add_argument("--model", default="gemini-3.6-flash")
     args = parser.parse_args()
 
     if not os.getenv("GEMINI_API_KEY"):
         parser.error("export GEMINI_API_KEY in your shell environment")
     source = Path(args.input)
-    destination = Path(args.output) if args.output else source.with_name(
-        f"{source.stem}_translated.png"
-    )
-    translate_image(source, destination, args.model)
+    if source.is_dir():
+        images = sorted(
+            path
+            for path in source.iterdir()
+            if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+        )
+        if not images:
+            parser.error(f"no PNG, JPEG, or WebP images found in {source}")
+        output_folder = Path(args.output) if args.output else Path("output")
+        for index, image_path in enumerate(images, start=1):
+            destination = output_folder / f"{image_path.stem}_en.png"
+            print(f"Processing {index}/{len(images)}: {image_path}")
+            translate_image(image_path, destination, args.model)
+    elif source.is_file():
+        destination = Path(args.output) if args.output else source.with_name(
+            f"{source.stem}_translated.png"
+        )
+        translate_image(source, destination, args.model)
+    else:
+        parser.error(f"input does not exist: {source}")
 
 
 if __name__ == "__main__":
