@@ -38,6 +38,12 @@ model can be changed with `--model`.
 
 ## Notes
 
+- The output is PNG because translated text and thin drawing lines benefit from
+  lossless compression. Saving back to JPEG would compress the image again,
+  potentially introducing blur and artifacts around text and lines. In testing,
+  JPEG output looked visibly worse and the translated text also overflowed some
+  cells; the overflow may come from variation in Gemini's detected bounding boxes
+  rather than from JPEG compression itself.
 - Gemini returns normalized bounding boxes for the original text and its safe writing
   area. The script converts them to pixels, estimates the local paper colour, erases
   the source, and chooses the largest font that fits.
