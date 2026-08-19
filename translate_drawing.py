@@ -15,9 +15,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 PROMPT = """
 Find every text fragment containing Cyrillic letters in this technical drawing.
-Translate each fragment from Russian to English. Transliterate abbreviations instead
-of translating them (for example, Russian abbreviation "ТУ" becomes "TU"). Do not
-return standalone numbers or text already written only in Latin characters.
+Translate each fragment from Russian to English. Transliterate only short
+abbreviations, normally 2-5 letters that are uppercase or followed by a period (for
+example, Russian abbreviation "ТУ" becomes "TU"). Translate every ordinary Russian
+word or phrase; never transliterate a complete word or phrase. Do not return
+standalone numbers or text already written only in Latin characters.
 
 Return ONLY a JSON array. Each object must have exactly these fields:
   "source": the original Russian text,
@@ -211,24 +213,31 @@ def translate_image(input_path, output_path, model):
     image.save(output_path)
     print(f"First pass saved {len(regions)} text regions -> {output_path}")
 
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    try:
-        remaining_regions = request_regions(
-            client, buffer.getvalue(), "image/png", model, RECHECK_PROMPT
+    total_regions = len(regions)
+    for pass_number in (2, 3):
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        try:
+            remaining_regions = request_regions(
+                client, buffer.getvalue(), "image/png", model, RECHECK_PROMPT
+            )
+        except errors.ServerError as error:
+            if error.code != 503:
+                raise
+            print(
+                f"Cleanup pass {pass_number} unavailable; "
+                "keeping the latest saved output"
+            )
+            return
+        apply_regions(image, remaining_regions)
+        total_regions += len(remaining_regions)
+        image.save(output_path)
+        print(
+            f"Cleanup pass {pass_number} saved {len(remaining_regions)} text regions "
+            f"-> {output_path}"
         )
-    except errors.ServerError as error:
-        if error.code != 503:
-            raise
-        print("Second pass unavailable; keeping the first-pass output")
-        return
-    apply_regions(image, remaining_regions)
 
-    image.save(output_path)
-    print(
-        f"Translated {len(regions) + len(remaining_regions)} text regions "
-        f"({len(remaining_regions)} on second pass) -> {output_path}"
-    )
+    print(f"Translated {total_regions} text regions -> {output_path}")
 
 
 def main():

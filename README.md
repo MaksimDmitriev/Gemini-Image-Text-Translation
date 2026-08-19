@@ -3,9 +3,9 @@
 A small Python script that finds Russian text in a technical drawing, translates it
 to English with Gemini, removes the Russian text, and fits the translation into the
 same table cell or label area. It uses a second Gemini pass to catch small Cyrillic
-text missed on the first pass, so a successful full run normally uses two API calls
-per image. The first-pass output is saved immediately; if the cleanup pass receives
-a temporary `503`, the usable first-pass image is kept.
+text missed on the first pass and a third pass for a final check. A successful full
+run normally uses three API calls per image. The output is saved after every pass; if
+a cleanup pass receives a temporary `503`, the latest usable image is kept.
 
 ## Setup
 
@@ -44,8 +44,8 @@ processed with `python translate_drawing.py input/1.jpg output/1_en.png`.
 The default model is `gemini-3.6-flash`. If it returns a temporary `503` capacity
 error, the script automatically retries with `gemini-3.5-flash`. The primary model
 can be changed with `--model`. A fallback adds one API call for the affected pass.
-The normal two-pass run uses two calls per image; if both passes need the fallback,
-the maximum is four calls per image.
+The normal three-pass run uses three calls per image; if every pass needs the
+fallback, the maximum is six calls per image.
 
 ## Notes
 
