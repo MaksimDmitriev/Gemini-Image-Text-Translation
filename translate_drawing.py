@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 from PIL import Image, ImageDraw, ImageFont, ImageStat
 
 
@@ -29,6 +29,8 @@ All coordinates must be integers normalized to 0..1000. Include all Cyrillic tex
 including small labels, notes, title blocks, and rotated text. If text is rotated,
 still use its axis-aligned bounds. Preserve numbers that occur inside translated text.
 """
+
+FALLBACK_MODEL = "gemini-3.5-flash-lite"
 
 
 def normalized_box(box, width, height):
@@ -113,17 +115,26 @@ def translate_image(input_path, output_path, model):
         mime_type = Image.MIME.get(source.format, "image/png")
         image = source.convert("RGB")
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    response = client.models.generate_content(
-        model=model,
-        contents=[
-            types.Part.from_bytes(data=Path(input_path).read_bytes(), mime_type=mime_type),
-            PROMPT,
-        ],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            temperature=0,
-        ),
-    )
+    contents = [
+        types.Part.from_bytes(data=Path(input_path).read_bytes(), mime_type=mime_type),
+        PROMPT,
+    ]
+
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+    except errors.ServerError as error:
+        if error.code != 503 or model == FALLBACK_MODEL:
+            raise
+        print(f"{model} is unavailable; retrying with {FALLBACK_MODEL}")
+        response = client.models.generate_content(
+            model=FALLBACK_MODEL,
+            contents=contents,
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
     regions = parse_regions(response.text)
     draw = ImageDraw.Draw(image)
 
