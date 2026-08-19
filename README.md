@@ -57,6 +57,7 @@ the maximum is four calls per image.
   rather than from JPEG compression itself.
 - Gemini returns normalized bounding boxes for the original text and its safe writing
   area. The script converts them to pixels, erases the source with white, and fits the
-  translation without exceeding the source text's approximate font size.
+  translation without exceeding the source text's approximate font size. Labels
+  rotated by 90-degree increments keep their original orientation.
 - Standalone numbers and existing Latin text are intentionally left unchanged.
 - Very dense or low-resolution drawings may still need prompt tuning.

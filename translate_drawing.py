@@ -24,7 +24,8 @@ Return ONLY a JSON array. Each object must have exactly these fields:
   "translation": its English translation,
   "box_2d": tight bounds of the original text [ymin, xmin, ymax, xmax],
   "target_box_2d": the largest safe rectangular area in the same table cell or label
-                   area where the translation may be written without crossing lines.
+                   area where the translation may be written without crossing lines,
+  "rotation_degrees": clockwise text rotation; use exactly 0, 90, 180, or 270.
 
 All coordinates must be integers normalized to 0..1000. Include all Cyrillic text,
 including small labels, notes, title blocks, and rotated text. If text is rotated,
@@ -113,8 +114,16 @@ def fitted_text(draw, text, width, height, max_font_size):
     return font, wrapped, draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=1)
 
 
-def draw_fitted_text(image, draw, text, box, max_font_size):
-    """Fit text to a cell and paste it without crossing the cell boundary."""
+def normalized_rotation(value):
+    """Round Gemini's rotation value to a supported clockwise quarter-turn."""
+    try:
+        return (round(float(value) / 90) * 90) % 360
+    except (TypeError, ValueError):
+        return 0
+
+
+def draw_fitted_text(image, draw, text, box, max_font_size, rotation_degrees=0):
+    """Fit and rotate text without crossing the cell boundary."""
     x1, y1, x2, y2 = box
     width, height = max(1, x2 - x1), max(1, y2 - y1)
     padding = max(1, round(min(width, height) * 0.04))
@@ -122,18 +131,26 @@ def draw_fitted_text(image, draw, text, box, max_font_size):
     x1, y1, x2, y2 = x1 + padding, y1 + padding, x2 - padding, y2 - padding
     width, height = max(1, x2 - x1), max(1, y2 - y1)
 
-    font, wrapped, bounds = fitted_text(draw, text, width, height, max_font_size)
+    rotation = normalized_rotation(rotation_degrees)
+    layout_width, layout_height = (
+        (height, width) if rotation in (90, 270) else (width, height)
+    )
+    font, wrapped, bounds = fitted_text(
+        draw, text, layout_width, layout_height, max_font_size
+    )
     text_width, text_height = bounds[2] - bounds[0], bounds[3] - bounds[1]
 
-    layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    layer = Image.new("RGBA", (layout_width, layout_height), (0, 0, 0, 0))
     layer_draw = ImageDraw.Draw(layer)
     position = (
-        (width - text_width) / 2 - bounds[0],
-        (height - text_height) / 2 - bounds[1],
+        (layout_width - text_width) / 2 - bounds[0],
+        (layout_height - text_height) / 2 - bounds[1],
     )
     layer_draw.multiline_text(
         position, wrapped, font=font, fill="black", spacing=1, align="center"
     )
+    if rotation:
+        layer = layer.rotate(-rotation, expand=True, resample=Image.Resampling.BICUBIC)
     image.paste(layer, (x1, y1), layer)
 
 
@@ -166,13 +183,18 @@ def apply_regions(image, regions):
         target_box = normalized_box(region["target_box_2d"], image.width, image.height)
         draw.rectangle(erase_box, fill="white")
 
+        rotation = normalized_rotation(region.get("rotation_degrees", 0))
+        vertical = rotation in (90, 270)
+        source_width = max(1, erase_box[2] - erase_box[0])
         source_height = max(1, erase_box[3] - erase_box[1])
+        source_thickness = source_width if vertical else source_height
         draw_fitted_text(
             image,
             draw,
             str(region["translation"]),
             target_box,
-            max_font_size=source_height * 1.2,
+            max_font_size=source_thickness * 1.4,
+            rotation_degrees=rotation,
         )
 
 
