@@ -14,6 +14,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+The only runtime dependencies are the official `google-genai` SDK and Pillow.
+
 Export your Gemini API key. For example, add this to `~/.zshrc`:
 
 ```bash

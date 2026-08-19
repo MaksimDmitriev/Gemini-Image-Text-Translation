@@ -104,8 +104,8 @@ def fitted_text(draw, text, box, max_font_size):
     return font, wrapped, draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=1)
 
 
-def draw_fitted_text(image, draw, text, box, clockwise_rotation, max_font_size):
-    """Fit text to a cell, rotate it like the source, and paste it within the cell."""
+def draw_fitted_text(image, draw, text, box, max_font_size):
+    """Fit text to a cell and paste it without crossing the cell boundary."""
     x1, y1, x2, y2 = box
     width, height = max(1, x2 - x1), max(1, y2 - y1)
     padding = max(1, round(min(width, height) * 0.04))
@@ -113,35 +113,29 @@ def draw_fitted_text(image, draw, text, box, clockwise_rotation, max_font_size):
     x1, y1, x2, y2 = x1 + padding, y1 + padding, x2 - padding, y2 - padding
     width, height = max(1, x2 - x1), max(1, y2 - y1)
 
-    try:
-        rotation = (round(float(clockwise_rotation) / 90) * 90) % 360
-    except (TypeError, ValueError):
-        rotation = 0
-    layout_width, layout_height = (
-        (height, width) if rotation in (90, 270) else (width, height)
-    )
-    layout_box = (0, 0, layout_width, layout_height)
+    layout_box = (0, 0, width, height)
     font, wrapped, bounds = fitted_text(draw, text, layout_box, max_font_size)
     text_width, text_height = bounds[2] - bounds[0], bounds[3] - bounds[1]
 
-    layer = Image.new("RGBA", (layout_width, layout_height), (0, 0, 0, 0))
+    layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     layer_draw = ImageDraw.Draw(layer)
     position = (
-        (layout_width - text_width) / 2 - bounds[0],
-        (layout_height - text_height) / 2 - bounds[1],
+        (width - text_width) / 2 - bounds[0],
+        (height - text_height) / 2 - bounds[1],
     )
     layer_draw.multiline_text(
         position, wrapped, font=font, fill="black", spacing=1, align="center"
     )
-    if rotation:
-        layer = layer.rotate(-rotation, expand=True, resample=Image.Resampling.BICUBIC)
     image.paste(layer, (x1, y1), layer)
 
 
 def request_regions(client, image_bytes, mime_type, model, prompt):
     """Request translated regions, falling back only when the model returns 503."""
     contents = [types.Part.from_bytes(data=image_bytes, mime_type=mime_type), prompt]
-    config = types.GenerateContentConfig(response_mime_type="application/json")
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+    )
     try:
         response = client.models.generate_content(
             model=model, contents=contents, config=config
@@ -164,21 +158,13 @@ def apply_regions(image, regions):
         target_box = normalized_box(region["target_box_2d"], image.width, image.height)
         draw.rectangle(erase_box, fill="white")
 
-        source_width = max(1, erase_box[2] - erase_box[0])
         source_height = max(1, erase_box[3] - erase_box[1])
-        rotation = region.get("rotation_degrees", 0)
-        try:
-            is_vertical = round(float(rotation) / 90) % 2 == 1
-        except (TypeError, ValueError):
-            is_vertical = False
-        source_text_height = source_width if is_vertical else source_height
         draw_fitted_text(
             image,
             draw,
             str(region["translation"]),
             target_box,
-            rotation,
-            max_font_size=source_text_height * 1.2,
+            max_font_size=source_height * 1.2,
         )
 
 
