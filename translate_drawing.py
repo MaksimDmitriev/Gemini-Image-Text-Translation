@@ -7,7 +7,6 @@ import os
 import re
 from pathlib import Path
 
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from PIL import Image, ImageDraw, ImageFont, ImageStat
@@ -152,9 +151,8 @@ def main():
     parser.add_argument("--model", default="gemini-2.5-flash")
     args = parser.parse_args()
 
-    load_dotenv()
     if not os.getenv("GEMINI_API_KEY"):
-        parser.error("set GEMINI_API_KEY in the environment or in a .env file")
+        parser.error("export GEMINI_API_KEY in your shell environment")
     source = Path(args.input)
     destination = Path(args.output) if args.output else source.with_name(
         f"{source.stem}_translated.png"

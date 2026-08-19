@@ -24,13 +24,12 @@ Load it into the current terminal:
 source ~/.zshrc
 ```
 
-Alternatively, copy `.env.example` to `.env` and put the key there. Both `.env` and
-the `input/` directory are ignored by Git.
-
-Put a drawing in `input/`, then run:
+Put the drawings at `input/1.jpg`, `input/2.jpg`, and `input/3.jpg`, then run:
 
 ```bash
-python translate_drawing.py input/drawing.png output/drawing_en.png
+python translate_drawing.py input/1.jpg output/1_en.png
+python translate_drawing.py input/2.jpg output/2_en.png
+python translate_drawing.py input/3.jpg output/3_en.png
 ```
 
 The default model is `gemini-2.5-flash`. It can be changed with `--model`.
