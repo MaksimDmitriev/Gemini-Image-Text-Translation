@@ -37,12 +37,15 @@ python translate_drawing.py input output
 ```
 
 The results are saved as `output/1_en.png`, `output/2_en.png`, and
-`output/3_en.png`. PNG, JPEG, and WebP inputs are supported. A single image can still
-be processed with `python translate_drawing.py input/1.jpg output/1_en.png`.
+`output/3_en.png`. PNG, JPEG, and WebP inputs are supported. Folder scanning is
+non-recursive and files are processed one at a time. A single image can still be
+processed with `python translate_drawing.py input/1.jpg output/1_en.png`.
 
 The default model is `gemini-3.6-flash`. If it returns a temporary `503` capacity
 error, the script automatically retries with `gemini-3.5-flash`. The primary model
 can be changed with `--model`. A fallback adds one API call for the affected pass.
+The normal two-pass run uses two calls per image; if both passes need the fallback,
+the maximum is four calls per image.
 
 ## Notes
 

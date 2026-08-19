@@ -99,10 +99,8 @@ def wrap_text(draw, text, font, max_width):
     return "\n".join(lines)
 
 
-def fitted_text(draw, text, box, max_font_size):
+def fitted_text(draw, text, width, height, max_font_size):
     """Choose the largest font and wrapping that remains inside the target box."""
-    x1, y1, x2, y2 = box
-    width, height = max(1, x2 - x1), max(1, y2 - y1)
     start_size = min(max(6, height), max(6, round(max_font_size)))
     for size in range(start_size, 5, -1):
         font = font_at(size)
@@ -124,8 +122,7 @@ def draw_fitted_text(image, draw, text, box, max_font_size):
     x1, y1, x2, y2 = x1 + padding, y1 + padding, x2 - padding, y2 - padding
     width, height = max(1, x2 - x1), max(1, y2 - y1)
 
-    layout_box = (0, 0, width, height)
-    font, wrapped, bounds = fitted_text(draw, text, layout_box, max_font_size)
+    font, wrapped, bounds = fitted_text(draw, text, width, height, max_font_size)
     text_width, text_height = bounds[2] - bounds[0], bounds[3] - bounds[1]
 
     layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
