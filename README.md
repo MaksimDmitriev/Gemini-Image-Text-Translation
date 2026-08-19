@@ -2,7 +2,9 @@
 
 A small Python script that finds Russian text in a technical drawing, translates it
 to English with Gemini, removes the Russian text, and fits the translation into the
-same table cell or label area. It uses one Gemini API call per image.
+same table cell or label area. It uses a second Gemini pass to catch small Cyrillic
+text missed on the first pass, so a successful run normally uses two API calls per
+image.
 
 ## Setup
 
@@ -34,7 +36,8 @@ python translate_drawing.py input/3.jpg output/3_en.png
 
 The default model is `gemini-3.6-flash`. If it returns a temporary `503` capacity
 error, the script automatically retries with `gemini-3.5-flash-lite`. The primary
-model can be changed with `--model`.
+model can be changed with `--model`. A fallback adds one API call for the affected
+pass.
 
 ## Notes
 
@@ -45,8 +48,7 @@ model can be changed with `--model`.
   cells; the overflow may come from variation in Gemini's detected bounding boxes
   rather than from JPEG compression itself.
 - Gemini returns normalized bounding boxes for the original text and its safe writing
-  area. The script converts them to pixels, estimates the local paper colour, erases
-  the source, and chooses the largest font that fits. Horizontal and 90-degree rotated
-  labels keep their original orientation.
+  area. The script converts them to pixels, erases the source with white, and fits the
+  translation without exceeding the source text's approximate font size.
 - Standalone numbers and existing Latin text are intentionally left unchanged.
-- Very dense or low-resolution drawings may need a second pass or prompt tuning.
+- Very dense or low-resolution drawings may still need prompt tuning.
