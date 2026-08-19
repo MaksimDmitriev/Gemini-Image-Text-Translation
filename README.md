@@ -32,7 +32,7 @@ python translate_drawing.py input/2.jpg output/2_en.png
 python translate_drawing.py input/3.jpg output/3_en.png
 ```
 
-The default model is `gemini-2.5-flash`. It can be changed with `--model`.
+The default model is `gemini-3.6-flash`. It can be changed with `--model`.
 
 ## Notes
 

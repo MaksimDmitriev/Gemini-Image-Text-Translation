@@ -148,7 +148,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", help="Russian drawing (PNG/JPEG/WebP)")
     parser.add_argument("output", nargs="?", help="Output image path")
-    parser.add_argument("--model", default="gemini-2.5-flash")
+    parser.add_argument("--model", default="gemini-3.6-flash")
     args = parser.parse_args()
 
     if not os.getenv("GEMINI_API_KEY"):
